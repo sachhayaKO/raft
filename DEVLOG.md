@@ -6,4 +6,4 @@
 - Blocked on: nothing
 - Next: planning project timeline
 
-## 2026-05-29 — <Chris>
+## 2026-05-29 — Chris
