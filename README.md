@@ -12,6 +12,14 @@ A from-scratch Raft implementation covering leader election, log replication, an
 
 ## Layout
 
+raft/
+| go.mod
+|-- raft/
+    - types.go — Raft data structures (state, RPC messages)
+    - consensus.go — the actual Raft algorithm logic
+    - server.go — networking and RPC registration
+    - consensus_test.go — election and state tests
+
 ## Running
 
 
