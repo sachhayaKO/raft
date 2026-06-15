@@ -18,4 +18,16 @@
 - Learning typing and struct creation
 - Next: begin coding consensus logic
 - Important concepts learned: Each module has a perisistant state, volatile state, and leaders only have another volatile state. 
-- Next Steps: building the NewConsensusModule constructorr. 
+- Next Steps: building the NewConsensusModule constructor. 
+
+## 2026-06-15 — Sachin
+  - Completed: `ConsensusModule` struct with all persistent, volatile, and leader-only state fields
+  - Completed: `NewConsensusModule` constructor with correct sentinel value for `votedFor` (-1)
+  - Completed: `runElectionTimer` goroutine — sleeps 10ms per tick, checks state, randomizes timeout per
+  iteration
+  - Learning: Go structs and methods, pointer receivers, `sync.Mutex` patterns, `time.Timer` vs
+  `time.Ticker`, infinite loops with `for`, goroutines with `go`
+  - Key concepts: why `votedFor` must be persisted (double voting across crashes), why mutex must be
+  unlocked before RPC calls, why election timeout must re-randomize each check
+  - Next: implement `startElection` — increment term, vote for self, send `RequestVote` to all peers in
+  parallel goroutines

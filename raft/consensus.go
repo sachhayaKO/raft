@@ -1,47 +1,55 @@
 package raft
 
-import "sync"
+import (
+	"math/rand"
+	"sync"
+	"time"
+)
 
 type ConsensusModule struct {
 	id    int
 	peers []int
 
-	//persistent state
+	// persistent state
+	currentTerm int // logical clock — losing this lets stale candidates win elections
+	votedFor    int // -1 means no vote; persisted so a crash can't cause double-voting
+	log         []LogEntry
 
-	/*
-		This variable prevents past elections conflicting with present
-		For example, if you restart with term 0, you'll grant votes to candidates
-		you already voted against, and you might accept a leader from a term you already
-		participated in.
-	*/
-	currentTerm int
+	// volatile state
+	lastHeartbeat time.Time // reset on every heartbeat; drives election timeout
+	commitIndex   int       // highest index known to be replicated on a majority
+	lastApplied   int       // highest index applied to the state machine (lags commitIndex)
 
-	// Makes sure that if a node crashes, it remembers who they votes for
-	// Nodes cannot vote for more than 1 candidate
-	votedFor int
+	// leader-only volatile state (reinitialized on election)
+	nextIndex  []int // next log index to send to each peer (optimistic)
+	matchIndex []int // highest log index confirmed replicated on each peer
 
-	//Log of all the LogEntries
-	log []LogEntry
+	state CMState    // current role: Follower, Candidate, Leader, or Dead
+	mu    sync.Mutex // protects all fields above
+}
 
-	//volatile state
+func NewConsensusModule(id int, peers []int) *ConsensusModule {
 
-	//Highest index where majority of nodes have the entry in their log
-	commitIndex int
-
-	//Highest term entry has been executed against the state machine
-	lastApplied int
-
-	//leader volatile state
-
-	//Index of the next log entry the leader will send to each follower
-	nextIndex []int
-
-	//Highest log index the leader knows has been replicated on a follower
-	matchIndex []int
-
-	//Tracks whether this node is a Follower, Candidate or Leader
-	state CMState
-
-	//Lock for writing to the state
-	mu sync.Mutex
+	cm := &ConsensusModule{
+		peers:    peers,
+		id:       id,
+		votedFor: -1,
+	}
+	go cm.runElectionTimer()
+	return cm
+}
+func (cm *ConsensusModule) runElectionTimer() {
+	for {
+		time.Sleep(10 * time.Millisecond)
+		cm.mu.Lock()
+		if cm.state == Leader || cm.state == Dead {
+			cm.mu.Unlock()
+			return
+		}
+		timeout := time.Duration(150+rand.Intn(151)) * time.Millisecond
+		if time.Since(cm.lastHeartbeat) >= timeout {
+			//Start a new election
+		}
+		cm.mu.Unlock()
+	}
 }
