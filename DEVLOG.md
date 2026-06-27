@@ -31,3 +31,10 @@
   unlocked before RPC calls, why election timeout must re-randomize each check
   - Next: implement `startElection` — increment term, vote for self, send `RequestVote` to all peers in
   parallel goroutines
+
+## 2026-06-26 — Sachin
+- Completed: `startElection` method — increments term, transitions to Candidate, votes for self, launches parallel goroutines per peer
+- Completed: vote counting logic — goroutines lock, check reply term, increment tally, transition to Leader on majority
+- Learning: anonymous goroutines with `go func(arg) { }(arg)`, closure variable capture gotcha (why you pass peerId as argument), majority calculation (`len(peers)/2 + 1`)
+- Key concepts: why you save `currentTerm` to a local var before launching goroutines (term may change by the time goroutines run), why votes starts at 1 (self-vote), why higher term in any reply means immediate revert to Follower
+- Next: implement `RequestVote` RPC handler — the logic that receives and replies to vote requests

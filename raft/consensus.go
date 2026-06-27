@@ -53,3 +53,32 @@ func (cm *ConsensusModule) runElectionTimer() {
 		cm.mu.Unlock()
 	}
 }
+func (cm *ConsensusModule) startElection() {
+	cm.currentTerm += 1
+	cm.mu.Lock()
+	cm.state = Candidate
+	cm.votedFor = cm.id
+	savedTerm := cm.currentTerm
+	cm.mu.Unlock()
+
+	votes := 1
+
+	for _, peerId := range cm.peers {
+		go func(peerId int) {
+			//send RequestVote RPC to peerID, get reply
+			var reply RequestVoteReply
+
+			cm.mu.Lock()
+			if reply.Term > cm.currentTerm {
+				cm.state = Follower
+				cm.mu.Unlock()
+				return
+			}
+			votes++
+			if votes >= len(cm.peers)/2+1 {
+				cm.state = Leader
+			}
+			cm.mu.Unlock()
+		}(peerId)
+	}
+}
