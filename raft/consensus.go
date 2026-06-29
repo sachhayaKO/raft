@@ -54,8 +54,8 @@ func (cm *ConsensusModule) runElectionTimer() {
 	}
 }
 func (cm *ConsensusModule) startElection() {
-	cm.currentTerm += 1
 	cm.mu.Lock()
+	cm.currentTerm += 1
 	cm.state = Candidate
 	cm.votedFor = cm.id
 	savedTerm := cm.currentTerm
@@ -69,7 +69,7 @@ func (cm *ConsensusModule) startElection() {
 			var reply RequestVoteReply
 
 			cm.mu.Lock()
-			if reply.Term > cm.currentTerm {
+			if reply.Term > savedTerm {
 				cm.state = Follower
 				cm.mu.Unlock()
 				return
@@ -80,5 +80,23 @@ func (cm *ConsensusModule) startElection() {
 			}
 			cm.mu.Unlock()
 		}(peerId)
+	}
+}
+
+func (cm *ConsensusModule) requestVote(args RequestVoteArgs, reply *RequestVoteReply) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if args.Term > cm.currentTerm {
+		cm.currentTerm = args.Term
+		cm.state = Follower
+		cm.votedFor = -1
+	}
+	reply.Term = cm.currentTerm
+	if args.Term == cm.currentTerm && (cm.votedFor == -1 || cm.votedFor == args.CandidateId) {
+		cm.votedFor = args.CandidateId
+		reply.VoteGranted = true
+	} else {
+		reply.VoteGranted = false
 	}
 }
