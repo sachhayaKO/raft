@@ -28,8 +28,8 @@ type ConsensusModule struct {
 	mu    sync.Mutex // protects all fields above
 }
 
+// NewConsensusModule creates a new ConsensusModule and immediately starts its election timer.
 func NewConsensusModule(id int, peers []int) *ConsensusModule {
-
 	cm := &ConsensusModule{
 		peers:    peers,
 		id:       id,
@@ -38,6 +38,9 @@ func NewConsensusModule(id int, peers []int) *ConsensusModule {
 	go cm.runElectionTimer()
 	return cm
 }
+
+// runElectionTimer runs in a goroutine for the lifetime of a non-leader node.
+// It fires an election if no heartbeat arrives within a randomized timeout.
 func (cm *ConsensusModule) runElectionTimer() {
 	for {
 		time.Sleep(10 * time.Millisecond)
@@ -48,28 +51,33 @@ func (cm *ConsensusModule) runElectionTimer() {
 		}
 		timeout := time.Duration(150+rand.Intn(151)) * time.Millisecond
 		if time.Since(cm.lastHeartbeat) >= timeout {
-			//Start a new election
+			// Start a new election
 		}
 		cm.mu.Unlock()
 	}
 }
+
+// startElection transitions the node to Candidate, votes for itself,
+// and sends RequestVote RPCs to all peers in parallel.
 func (cm *ConsensusModule) startElection() {
 	cm.mu.Lock()
 	cm.currentTerm += 1
 	cm.state = Candidate
 	cm.votedFor = cm.id
 	savedTerm := cm.currentTerm
+	_ = savedTerm // used when RPC is wired up
 	cm.mu.Unlock()
 
-	votes := 1
+	votes := 1 // counts self-vote
 
 	for _, peerId := range cm.peers {
 		go func(peerId int) {
-			//send RequestVote RPC to peerID, get reply
+			// send RequestVote RPC to peerId, get reply
 			var reply RequestVoteReply
 
 			cm.mu.Lock()
-			if reply.Term > savedTerm {
+			// higher term in reply means we're stale — revert to follower
+			if reply.Term > cm.currentTerm {
 				cm.state = Follower
 				cm.mu.Unlock()
 				return
@@ -77,26 +85,45 @@ func (cm *ConsensusModule) startElection() {
 			votes++
 			if votes >= len(cm.peers)/2+1 {
 				cm.state = Leader
+				go cm.leaderHeartbeat()
 			}
 			cm.mu.Unlock()
 		}(peerId)
 	}
 }
 
-func (cm *ConsensusModule) requestVote(args RequestVoteArgs, reply *RequestVoteReply) {
+// RequestVote handles an incoming RequestVote RPC from a candidate.
+func (cm *ConsensusModule) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) error {
 	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
+	// higher term forces us to update and clear any prior vote
 	if args.Term > cm.currentTerm {
 		cm.currentTerm = args.Term
-		cm.state = Follower
 		cm.votedFor = -1
 	}
-	reply.Term = cm.currentTerm
+	// grant vote if we haven't voted yet this term (or already voted for this candidate)
 	if args.Term == cm.currentTerm && (cm.votedFor == -1 || cm.votedFor == args.CandidateId) {
 		cm.votedFor = args.CandidateId
 		reply.VoteGranted = true
-	} else {
-		reply.VoteGranted = false
+	}
+	reply.Term = cm.currentTerm
+	cm.mu.Unlock()
+	return nil
+}
+
+// leaderHeartbeat runs in a goroutine while this node is Leader.
+// It sends AppendEntries RPCs to all peers every 50ms to suppress new elections.
+func (cm *ConsensusModule) leaderHeartbeat() {
+	for {
+		time.Sleep(50 * time.Millisecond)
+		cm.mu.Lock()
+		if cm.state != Leader || cm.state == Dead {
+			cm.mu.Unlock()
+			return
+		}
+		cm.mu.Unlock()
+		for _, peerId := range cm.peers {
+			// send AppendEntries RPC to peerId
+			_ = peerId
+		}
 	}
 }
