@@ -1,31 +1,41 @@
 # Raft (Go)
 
-An implementation of the Raft consensus algorithm in Go. Meant to be built so we can understand distributed systems and consensus from the ground up. We hope to eventually apply the algorithm to a real-world application. 
+A from-scratch implementation of the Raft consensus algorithm in Go. Building this to understand distributed systems and consensus from the ground up. The longer-term goal is to apply it to a real finance or healthcare application.
 
 ## Status
 
-Early-stage. Currently researching the algorithm and learning Go. 
+In progress. Leader election implemented. Log replication and persistence coming next.
 
 ## What is this
 
-A from-scratch Raft implementation covering leader election, log replication, and safety guarantees by following the In Search of an Understandable Consensus Algorithm by Diego Ongaro and John Ousterhout (https://raft.github.io/raft.pdf). The longer-term goal is to build a finance or healthcare application on top of the consensus layer. 
+Raft is a consensus algorithm that lets a cluster of servers agree on a shared log of commands even when some servers fail. This implementation follows the original paper by Diego Ongaro and John Ousterhout.
+
+Covers:
+- Leader election
+- Log replication (in progress)
+- Safety guarantees
+- Persistence (planned)
 
 ## Layout
 
+```
 raft/
-| go.mod
-|-- raft/
-    - types.go — Raft data structures (state, RPC messages)
-    - consensus.go — the actual Raft algorithm logic
-    - server.go — networking and RPC registration
-    - consensus_test.go — election and state tests
+├── go.mod
+└── raft/
+    ├── types.go           - data structures, RPC message types
+    ├── consensus.go       - Raft algorithm (election, voting, heartbeat)
+    ├── server.go          - networking and RPC
+    └── consensus_test.go  - election and state tests
+```
 
 ## Running
 
+Coming once the networking layer is complete.
 
-## Design Notes
+## Design
 
-## References 
-- [In Search of an Understandable Consensus Algorithm (Raft)](https://raft.github.io/raft.pdf)
+See [DESIGN.md](./DESIGN.md) for decisions on quorum, persistence, timing, and networking.
 
+## References
 
+- [In Search of an Understandable Consensus Algorithm](https://raft.github.io/raft.pdf)
