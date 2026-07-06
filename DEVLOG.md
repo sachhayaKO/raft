@@ -46,3 +46,10 @@
 - Learning: why `go` is required before function calls in goroutines (blocking vs non-blocking), mutex must be released before any RPC call, `reply.VoteGranted` defaults to false via Go zero values
 - Key concepts: deadlock caused by holding mutex inside infinite loop, why leaderHeartbeat launches only at the moment of becoming Leader, `go` means fire-and-forget
 - Next: implement `server.go` — wire up `net/rpc` so nodes can actually communicate over the network
+
+## 2026-07-06 — Sachin
+- Completed: `Server` struct — `cm`, `listener`, `peerAddrs`, `address`
+- Completed: `NewServer` constructor — takes cm, peer addresses, and own address; starts TCP listener with `net.Listen`
+- Learning: Go imports syntax, `net.Listener` type, error handling with `log.Fatal`, difference between receivers and regular functions
+- Key concepts: server owns its own cm only (not peers'), outbound needs peer address map, `NewServer` receives cm from caller rather than creating it
+- Next: implement `Start` method — accept connections and register RPC handlers
