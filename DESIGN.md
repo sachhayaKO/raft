@@ -104,13 +104,15 @@ This applies on both requests and responses, for any RPC type.
 
 ---
 
-## Networking: net/rpc
+## Networking: gRPC
 
-Using Go's standard library net/rpc.
+Using gRPC over Go's standard library net/rpc.
 
-The handler signature Raft needs is `func (s *T) Method(args T, reply *T) error`, which is exactly what net/rpc expects. Zero dependencies, no adapter code.
+gRPC is cross-language, has TLS, observability, and is the production standard for service-to-service communication. The RPC contract is defined in proto/raft.proto and the Go code is generated from it using protoc. This means the serialization and transport layer is handled automatically.
 
-For a production system we would use gRPC. It is cross-language, has TLS, retry, and observability built in. net/rpc is Go only and deprecated upstream. The plan is to start with net/rpc to understand what is happening under the hood, then migrate to gRPC.
+net/rpc was the original plan but gRPC is the better choice for a resume project and teaches more transferable skills.
+
+The Server implements the generated RaftServer interface and calls into ConsensusModule for the actual algorithm logic. ConsensusModule has no gRPC imports and stays pure algorithm.
 
 ---
 

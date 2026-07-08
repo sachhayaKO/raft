@@ -51,7 +51,7 @@ func (cm *ConsensusModule) runElectionTimer() {
 		}
 		timeout := time.Duration(150+rand.Intn(151)) * time.Millisecond
 		if time.Since(cm.lastHeartbeat) >= timeout {
-			// Start a new election
+			go cm.startElection()
 		}
 		cm.mu.Unlock()
 	}
@@ -65,15 +65,22 @@ func (cm *ConsensusModule) startElection() {
 	cm.state = Candidate
 	cm.votedFor = cm.id
 	savedTerm := cm.currentTerm
-	_ = savedTerm // used when RPC is wired up
 	cm.mu.Unlock()
 
 	votes := 1 // counts self-vote
 
 	for _, peerId := range cm.peers {
 		go func(peerId int) {
-			// send RequestVote RPC to peerId, get reply
-			var reply RequestVoteReply
+
+			args := RequestVoteArgs{
+				Term:        savedTerm,
+				CandidateId: cm.id,
+			}
+			reply, err := cm.RequestVote(args)
+
+			if err != nil {
+				return
+			}
 
 			cm.mu.Lock()
 			// higher term in reply means we're stale — revert to follower
@@ -93,8 +100,9 @@ func (cm *ConsensusModule) startElection() {
 }
 
 // RequestVote handles an incoming RequestVote RPC from a candidate.
-func (cm *ConsensusModule) RequestVote(args RequestVoteArgs, reply *RequestVoteReply) error {
+func (cm *ConsensusModule) RequestVote(args RequestVoteArgs) (*RequestVoteReply, error) {
 	cm.mu.Lock()
+	reply := &RequestVoteReply{}
 	// higher term forces us to update and clear any prior vote
 	if args.Term > cm.currentTerm {
 		cm.currentTerm = args.Term
@@ -107,7 +115,21 @@ func (cm *ConsensusModule) RequestVote(args RequestVoteArgs, reply *RequestVoteR
 	}
 	reply.Term = cm.currentTerm
 	cm.mu.Unlock()
-	return nil
+	return reply, nil
+}
+
+func (cm *ConsensusModule) AppendEntries(args AppendEntriesArgs) (*AppendEntriesReply, error) {
+	cm.mu.Lock()
+	reply := &AppendEntriesReply{}
+	if args.Term < cm.currentTerm {
+		reply.Success = false
+		reply.Term = cm.currentTerm
+	} else {
+		reply.Success = true
+		cm.lastHeartbeat = time.Now()
+	}
+	cm.mu.Unlock()
+	return reply, nil
 }
 
 // leaderHeartbeat runs in a goroutine while this node is Leader.
@@ -120,10 +142,17 @@ func (cm *ConsensusModule) leaderHeartbeat() {
 			cm.mu.Unlock()
 			return
 		}
+		term := cm.currentTerm
+		id := cm.id
 		cm.mu.Unlock()
 		for _, peerId := range cm.peers {
-			// send AppendEntries RPC to peerId
+			args := AppendEntriesArgs{
+				Term:     term,
+				LeaderId: id,
+			}
+			//AppendEntries(args) we will send it later
 			_ = peerId
+			_ = args
 		}
 	}
 }

@@ -61,3 +61,12 @@
 - Learning: proto3 syntax, message field numbers, go_package option, protoc flags (source_relative to control output path)
 - Key concepts: proto file defines the RPC contract, protoc generates the server interface and client stub, gRPC signatures use context.Context and return values instead of out parameters
 - Next: decide whether ConsensusModule or Server implements the gRPC interface, then update method signatures to match generated interface
+
+## 2026-07-08 — Sachin
+- Decision: Server implements the gRPC interface, ConsensusModule stays pure algorithm with no networking imports
+- Completed: updated RequestVote signature to return (*RequestVoteReply, error) instead of using out parameter
+- Completed: AppendEntries handler on ConsensusModule — rejects stale leaders, resets lastHeartbeat on valid heartbeat
+- Completed: wired go cm.startElection() into runElectionTimer, fixed deadlock (was calling directly while holding mutex)
+- Completed: leaderHeartbeat reads currentTerm and id into locals before unlocking, RPC call still placeholder
+- Completed: startElection now builds RequestVoteArgs with savedTerm and calls cm.RequestVote directly (will be replaced with gRPC client call)
+- Next: implement Server methods for gRPC interface, wire up gRPC server in Start method
