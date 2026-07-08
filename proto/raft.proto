@@ -1,0 +1,28 @@
+syntax = "proto3"; 
+
+option go_package = "github.com/sachhayaKO/raft/proto"; 
+
+
+
+service Raft { 
+    rpc RequestVote(RequestVoteArgs) returns (RequestVoteReply); 
+    rpc AppendEntries(AppendEntriesArgs) returns (AppendEntriesReply);
+}
+
+message RequestVoteArgs{ 
+    int32 term = 1;
+    int32 candidateId = 2;
+}
+message RequestVoteReply{
+    int32 term = 1; 
+    bool voteGranted = 2; 
+}
+message AppendEntriesArgs{
+    int32 term = 1; 
+    int32 leaderId = 2;
+}
+message AppendEntriesReply{ 
+    int32 term = 1; 
+    bool success = 2;
+}
+

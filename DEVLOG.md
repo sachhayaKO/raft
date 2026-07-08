@@ -53,3 +53,11 @@
 - Learning: Go imports syntax, `net.Listener` type, error handling with `log.Fatal`, difference between receivers and regular functions
 - Key concepts: server owns its own cm only (not peers'), outbound needs peer address map, `NewServer` receives cm from caller rather than creating it
 - Next: implement `Start` method — accept connections and register RPC handlers
+
+## 2026-07-07 — Sachin
+- Decision: switched from net/rpc to gRPC for networking layer. Better for resume, cross-language, has TLS and observability built in. Plan is to finish with net/rpc understanding first then migrate.
+- Completed: proto/raft.proto — defined Raft service with RequestVote and AppendEntries RPCs, all four message types matching types.go
+- Completed: ran protoc to generate proto/raft.pb.go and proto/raft_grpc.pb.go
+- Learning: proto3 syntax, message field numbers, go_package option, protoc flags (source_relative to control output path)
+- Key concepts: proto file defines the RPC contract, protoc generates the server interface and client stub, gRPC signatures use context.Context and return values instead of out parameters
+- Next: decide whether ConsensusModule or Server implements the gRPC interface, then update method signatures to match generated interface
