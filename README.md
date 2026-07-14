@@ -4,7 +4,7 @@ A from-scratch implementation of the Raft consensus algorithm in Go. Building th
 
 ## Status
 
-In progress. Leader election implemented. Log replication and persistence coming next.
+In progress. Leader election and gRPC networking layer implemented. Log replication and persistence coming next.
 
 ## What is this
 
@@ -21,11 +21,15 @@ Covers:
 ```
 raft/
 ├── go.mod
+├── proto/
+│   ├── raft.proto             - gRPC service and message definitions
+│   ├── raft.pb.go             - generated message types
+│   └── raft_grpc.pb.go        - generated server interface and client
 └── raft/
-    ├── types.go           - data structures, RPC message types
-    ├── consensus.go       - Raft algorithm (election, voting, heartbeat)
-    ├── server.go          - networking and RPC
-    └── consensus_test.go  - election and state tests
+    ├── types.go               - internal data structures
+    ├── consensus.go           - Raft algorithm (election, voting, heartbeat)
+    ├── server.go              - gRPC server, client connections
+    └── consensus_test.go      - election and state tests
 ```
 
 ## Running

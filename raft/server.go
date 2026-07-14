@@ -7,14 +7,16 @@ import (
 	"raftproject/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Server struct {
 	proto.UnimplementedRaftServer
-	cm        *ConsensusModule
-	listener  net.Listener
-	peerAddrs map[int]string
-	address   string
+	peerClients map[int]proto.RaftClient
+	cm          *ConsensusModule
+	listener    net.Listener
+	peerAddrs   map[int]string
+	address     string
 }
 
 func NewServer(cm *ConsensusModule, peerAddrs map[int]string, address string) *Server {
@@ -28,6 +30,13 @@ func NewServer(cm *ConsensusModule, peerAddrs map[int]string, address string) *S
 		peerAddrs: peerAddrs,
 	}
 	sv.listener = ln
+	sv.peerClients = make(map[int]proto.RaftClient)
+	for id, addr := range peerAddrs {
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))		if err != nil {
+			log.Fatal(err)
+		}
+		sv.peerClients[id] = proto.NewRaftClient(conn)
+	}
 	return sv
 }
 func (sv *Server) AppendEntries(ctx context.Context, req *proto.AppendEntriesArgs) (*proto.AppendEntriesReply, error) {
@@ -36,10 +45,14 @@ func (sv *Server) AppendEntries(ctx context.Context, req *proto.AppendEntriesArg
 		LeaderId: int(req.LeaderId),
 	}
 	reply, err := sv.cm.AppendEntries(internalArgs)
+	if err != nil {
+		return nil, err
+	}
 	return &proto.AppendEntriesReply{
 		Term:    int32(reply.Term),
-		Success: bool(reply.Success),
-	}, err
+		Success: reply.Success,
+	}, nil
+
 }
 
 func (sv *Server) RequestVote(ctx context.Context, req *proto.RequestVoteArgs) (*proto.RequestVoteReply, error) {
@@ -48,14 +61,17 @@ func (sv *Server) RequestVote(ctx context.Context, req *proto.RequestVoteArgs) (
 		CandidateId: int(req.CandidateId),
 	}
 	reply, err := sv.cm.RequestVote(internalArgs)
-
+	if err != nil {
+		return nil, err
+	}
 	return &proto.RequestVoteReply{
 		Term:        int32(reply.Term),
 		VoteGranted: reply.VoteGranted,
-	}, err
+	}, nil
 }
+
 func (sv *Server) Start() {
 	grpcServer := grpc.NewServer()
 	proto.RegisterRaftServer(grpcServer, sv)
-	grpcServer.Serve(sv.listener)
+	go grpcServer.Serve(sv.listener)
 }

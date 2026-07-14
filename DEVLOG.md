@@ -70,3 +70,11 @@
 - Completed: leaderHeartbeat reads currentTerm and id into locals before unlocking, RPC call still placeholder
 - Completed: startElection now builds RequestVoteArgs with savedTerm and calls cm.RequestVote directly (will be replaced with gRPC client call)
 - Next: implement Server methods for gRPC interface, wire up gRPC server in Start method
+
+## 2026-07-12 — Sachin
+- Completed: Server.AppendEntries and Server.RequestVote — convert proto types to internal types, call cm, convert reply back
+- Completed: Start method — creates gRPC server, registers RaftServer, serves on listener in goroutine
+- Completed: peerClients map on Server — dials all peers on construction using grpc.NewClient, stores proto.RaftClient per peer ID
+- Learning: gRPC client connections are persistent and stored, not created per call. grpc.Dial is deprecated, use grpc.NewClient. Must initialize map with make() before writing to it
+- Key concepts: nil pointer panic if you return reply fields when err != nil, insecure.NewCredentials() needed for local connections without TLS
+- Next: replace placeholder comments in startElection and leaderHeartbeat with real gRPC client calls using peerClients
