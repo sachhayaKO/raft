@@ -26,6 +26,10 @@ type ConsensusModule struct {
 
 	state CMState    // current role: Follower, Candidate, Leader, or Dead
 	mu    sync.Mutex // protects all fields above
+
+	//Server functions we need to call to access the peerAddrs without exposing
+	requestVoteFn   func(peerId int, args RequestVoteArgs) (*RequestVoteReply, error)
+	appendEntriesFn func(peerId int, args AppendEntriesArgs) (*AppendEntriesReply, error)
 }
 
 // NewConsensusModule creates a new ConsensusModule and immediately starts its election timer.
