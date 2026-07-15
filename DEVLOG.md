@@ -78,3 +78,10 @@
 - Learning: gRPC client connections are persistent and stored, not created per call. grpc.Dial is deprecated, use grpc.NewClient. Must initialize map with make() before writing to it
 - Key concepts: nil pointer panic if you return reply fields when err != nil, insecure.NewCredentials() needed for local connections without TLS
 - Next: replace placeholder comments in startElection and leaderHeartbeat with real gRPC client calls using peerClients
+
+## 2026-07-14 — Sachin
+- Completed: wired requestVoteFn and appendEntriesFn callbacks into startElection and leaderHeartbeat
+- Completed: leaderHeartbeat now handles higher term in reply — steps down to Follower immediately
+- Completed: server.go comments added
+- Key concepts: callback pattern keeps ConsensusModule free of gRPC imports, higher term in any reply triggers immediate stepdown
+- Next: write tests in consensus_test.go, then move to log replication

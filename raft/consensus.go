@@ -80,7 +80,7 @@ func (cm *ConsensusModule) startElection() {
 				Term:        savedTerm,
 				CandidateId: cm.id,
 			}
-			reply, err := cm.RequestVote(args)
+			reply, err := cm.requestVoteFn(peerId, args)
 
 			if err != nil {
 				return
@@ -154,9 +154,17 @@ func (cm *ConsensusModule) leaderHeartbeat() {
 				Term:     term,
 				LeaderId: id,
 			}
-			//AppendEntries(args) we will send it later
-			_ = peerId
-			_ = args
+			reply, err := cm.appendEntriesFn(peerId, args)
+			if err != nil {
+				continue
+			}
+			if reply.Term > term {
+				cm.mu.Lock()
+				cm.state = Follower
+				cm.currentTerm = reply.Term
+				cm.mu.Unlock()
+				return
+			}
 		}
 	}
 }
