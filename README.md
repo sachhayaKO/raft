@@ -25,6 +25,9 @@ raft/
 │   ├── raft.proto             - gRPC service and message definitions
 │   ├── raft.pb.go             - generated message types
 │   └── raft_grpc.pb.go        - generated server interface and client
+├── storage/
+│   ├── storage.go             - Storage interface, PersistentState/LogEntry types
+│   └── file_storage.go        - JSON file-based Storage implementation
 └── raft/
     ├── types.go               - internal data structures
     ├── consensus.go           - Raft algorithm (election, voting, heartbeat)

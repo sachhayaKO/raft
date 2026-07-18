@@ -93,3 +93,10 @@
 - Bug 2 (root cause of 3 leaders): RequestVote and AppendEntries updated currentTerm when seeing a higher term but never set state = Follower. A Leader that received a RequestVote from a higher-term candidate would update its term, vote for the new candidate, but stay as Leader. Its heartbeats now used the new term and succeeded — so it never stepped down. All 3 nodes ended up as permanent leaders at the same term. Fixed by adding cm.state = Follower in both handlers when a higher term is seen
 - Key concept: "higher term always wins" is not just about updating currentTerm — it must also trigger a state transition. Every RPC handler must enforce this
 - Next: log replication — update types.go with missing fields, implement real AppendEntries logic
+
+## 2026-07-19 — Chris
+- Completed: `storage` package — `Storage` interface (`Save`/`Load`), `PersistentState`/`LogEntry` types
+- Completed: `FileStorage` — JSON to a temp file, then `os.Rename` into place so a crash mid-write can't corrupt the state file
+- Learning: `LogEntry.Command` is `[]byte` not `interface{}` — JSON round-tripping `interface{}` loses the concrete type
+- Key concept: persistence lives in its own package, not `ConsensusModule` — testable standalone, no conflicts with in-progress algorithm work
+- Next: write `file_storage_test.go`, then wire `Storage` into `ConsensusModule`
