@@ -2,6 +2,7 @@ package raft
 
 import (
 	"testing"
+	"time"
 )
 
 func newTestCluster(t *testing.T) map[int]*ConsensusModule {
@@ -28,5 +29,16 @@ func newTestCluster(t *testing.T) map[int]*ConsensusModule {
 
 func TestElection(t *testing.T) {
 	modules := newTestCluster(t)
-
+	time.Sleep(500 * time.Millisecond)
+	count := 0
+	for _, cm := range modules {
+		cm.mu.Lock()
+		if cm.state == Leader {
+			count += 1
+		}
+		cm.mu.Unlock()
+	}
+	if count != 1 {
+		t.Errorf("expected 1 leader, got %d", count)
+	}
 }

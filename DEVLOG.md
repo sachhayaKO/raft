@@ -85,3 +85,11 @@
 - Completed: server.go comments added
 - Key concepts: callback pattern keeps ConsensusModule free of gRPC imports, higher term in any reply triggers immediate stepdown
 - Next: write tests in consensus_test.go, then move to log replication
+
+## 2026-07-17 — Sachin
+- Completed: wrote consensus_test.go — newTestCluster helper, TestElection asserts exactly 1 leader after 500ms
+- Completed: fixed two algorithm bugs caught by the test (see below)
+- Bug 1: runElectionTimer did not check Candidate state — kept firing elections while a node was already running one. Fixed by adding Candidate to the exit condition
+- Bug 2 (root cause of 3 leaders): RequestVote and AppendEntries updated currentTerm when seeing a higher term but never set state = Follower. A Leader that received a RequestVote from a higher-term candidate would update its term, vote for the new candidate, but stay as Leader. Its heartbeats now used the new term and succeeded — so it never stepped down. All 3 nodes ended up as permanent leaders at the same term. Fixed by adding cm.state = Follower in both handlers when a higher term is seen
+- Key concept: "higher term always wins" is not just about updating currentTerm — it must also trigger a state transition. Every RPC handler must enforce this
+- Next: log replication — update types.go with missing fields, implement real AppendEntries logic

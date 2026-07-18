@@ -49,7 +49,7 @@ func (cm *ConsensusModule) runElectionTimer() {
 	for {
 		time.Sleep(10 * time.Millisecond)
 		cm.mu.Lock()
-		if cm.state == Leader || cm.state == Dead {
+		if cm.state == Leader || cm.state == Dead || cm.state == Candidate {
 			cm.mu.Unlock()
 			return
 		}
@@ -94,7 +94,7 @@ func (cm *ConsensusModule) startElection() {
 				return
 			}
 			votes++
-			if votes >= len(cm.peers)/2+1 {
+			if votes >= len(cm.peers)/2+1 && cm.state == Candidate {
 				cm.state = Leader
 				go cm.leaderHeartbeat()
 			}
@@ -110,6 +110,7 @@ func (cm *ConsensusModule) RequestVote(args RequestVoteArgs) (*RequestVoteReply,
 	// higher term forces us to update and clear any prior vote
 	if args.Term > cm.currentTerm {
 		cm.currentTerm = args.Term
+		cm.state = Follower
 		cm.votedFor = -1
 	}
 	// grant vote if we haven't voted yet this term (or already voted for this candidate)
@@ -129,6 +130,7 @@ func (cm *ConsensusModule) AppendEntries(args AppendEntriesArgs) (*AppendEntries
 		reply.Success = false
 		reply.Term = cm.currentTerm
 	} else {
+		cm.state = Follower
 		reply.Success = true
 		cm.lastHeartbeat = time.Now()
 	}
