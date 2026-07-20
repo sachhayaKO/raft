@@ -123,13 +123,17 @@ func (cm *ConsensusModule) RequestVote(args RequestVoteArgs) (*RequestVoteReply,
 	return reply, nil
 }
 
+// AppendEntries handles an incoming AppendEntries RPC from the leader.
+// For now this is heartbeat-only — log entries come in the log replication phase.
 func (cm *ConsensusModule) AppendEntries(args AppendEntriesArgs) (*AppendEntriesReply, error) {
 	cm.mu.Lock()
 	reply := &AppendEntriesReply{}
 	if args.Term < cm.currentTerm {
+		// stale leader — tell it our term so it steps down
 		reply.Success = false
 		reply.Term = cm.currentTerm
 	} else {
+		// valid leader: step down if Candidate, reset heartbeat timer
 		cm.state = Follower
 		reply.Success = true
 		cm.lastHeartbeat = time.Now()

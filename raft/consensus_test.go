@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// newTestCluster spins up a 3-node in-process cluster with no real networking.
+// Callbacks are wired to call peer methods directly so tests run without gRPC.
 func newTestCluster(t *testing.T) map[int]*ConsensusModule {
 
 	cm0 := NewConsensusModule(0, []int{1, 2})
@@ -27,8 +29,10 @@ func newTestCluster(t *testing.T) map[int]*ConsensusModule {
 	return modules
 }
 
+// TestElection verifies that exactly one leader is elected after a full election timeout.
 func TestElection(t *testing.T) {
 	modules := newTestCluster(t)
+	// wait longer than the max election timeout (300ms) to guarantee an election has completed
 	time.Sleep(500 * time.Millisecond)
 	count := 0
 	for _, cm := range modules {
