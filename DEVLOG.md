@@ -100,3 +100,9 @@
 - Learning: `LogEntry.Command` is `[]byte` not `interface{}` — JSON round-tripping `interface{}` loses the concrete type
 - Key concept: persistence lives in its own package, not `ConsensusModule` — testable standalone, no conflicts with in-progress algorithm work
 - Next: write `file_storage_test.go`, then wire `Storage` into `ConsensusModule`
+
+## 2026-07-22 — Chris
+- Completed: `file_storage_test.go` — round trip, missing file, overwrite, temp-file cleanup
+- Completed: wired `Storage` into `ConsensusModule` — loads state in `NewConsensusModule`, `persist()` called in `startElection`, `RequestVote`, `leaderHeartbeat`
+- Key concept: `persist()` must complete before any RPC reply that depends on the change, or a crash in between reopens the double-vote bug
+- Next: log replication — `AppendEntries` needs real entries before `log[]` persistence matters

@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"path/filepath"
+	"raftproject/storage"
 	"testing"
 	"time"
 )
@@ -8,10 +10,11 @@ import (
 // newTestCluster spins up a 3-node in-process cluster with no real networking.
 // Callbacks are wired to call peer methods directly so tests run without gRPC.
 func newTestCluster(t *testing.T) map[int]*ConsensusModule {
+	dir := t.TempDir()
 
-	cm0 := NewConsensusModule(0, []int{1, 2})
-	cm1 := NewConsensusModule(1, []int{0, 2})
-	cm2 := NewConsensusModule(2, []int{0, 1})
+	cm0 := NewConsensusModule(0, []int{1, 2}, storage.NewFileStorage(filepath.Join(dir, "node0.json")))
+	cm1 := NewConsensusModule(1, []int{0, 2}, storage.NewFileStorage(filepath.Join(dir, "node1.json")))
+	cm2 := NewConsensusModule(2, []int{0, 1}, storage.NewFileStorage(filepath.Join(dir, "node2.json")))
 
 	modules := map[int]*ConsensusModule{
 		0: cm0,

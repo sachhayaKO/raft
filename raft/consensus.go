@@ -1,7 +1,9 @@
 package raft
 
 import (
+	"log"
 	"math/rand"
+	"raftproject/storage"
 	"sync"
 	"time"
 )
@@ -27,20 +29,80 @@ type ConsensusModule struct {
 	state CMState    // current role: Follower, Candidate, Leader, or Dead
 	mu    sync.Mutex // protects all fields above
 
+	store storage.Storage // persists currentTerm/votedFor/log across restarts
+
 	//Server functions we need to call to access the peerAddrs without exposing
 	requestVoteFn   func(peerId int, args RequestVoteArgs) (*RequestVoteReply, error)
 	appendEntriesFn func(peerId int, args AppendEntriesArgs) (*AppendEntriesReply, error)
 }
 
-// NewConsensusModule creates a new ConsensusModule and immediately starts its election timer.
-func NewConsensusModule(id int, peers []int) *ConsensusModule {
+// NewConsensusModule creates a new ConsensusModule, restores any persisted
+// state from a previous run, and immediately starts its election timer.
+func NewConsensusModule(id int, peers []int, store storage.Storage) *ConsensusModule {
 	cm := &ConsensusModule{
 		peers:    peers,
 		id:       id,
 		votedFor: -1,
+		store:    store,
 	}
+
+	saved, found, err := store.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if found {
+		cm.currentTerm = saved.CurrentTerm
+		cm.votedFor = saved.VotedFor
+		cm.log = logFromStorage(saved.Log)
+	}
+
 	go cm.runElectionTimer()
 	return cm
+}
+
+// persist writes currentTerm, votedFor, and log to durable storage. Must be
+// called with cm.mu held, and must complete before any RPC reply or outbound
+// RPC that depends on the state just changed - otherwise a crash in between
+// can cause a node to forget a vote it already granted.
+func (cm *ConsensusModule) persist() error {
+	state := storage.PersistentState{
+		CurrentTerm: cm.currentTerm,
+		VotedFor:    cm.votedFor,
+		Log:         logToStorage(cm.log),
+	}
+	return cm.store.Save(state)
+}
+
+// logToStorage converts the in-memory log (interface{} commands) to the
+// storage package's representation ([]byte commands). Commands that aren't
+// already []byte are dropped rather than encoded, since log replication
+// doesn't populate cm.log with real commands yet.
+func logToStorage(entries []LogEntry) []storage.LogEntry {
+	out := make([]storage.LogEntry, 0)
+	for i := 0; i < len(entries); i++ {
+		var cmd []byte
+		if b, ok := entries[i].Command.([]byte); ok {
+			cmd = b
+		}
+		out = append(out, storage.LogEntry{
+			Index:   entries[i].Index,
+			Term:    entries[i].Term,
+			Command: cmd,
+		})
+	}
+	return out
+}
+
+func logFromStorage(entries []storage.LogEntry) []LogEntry {
+	out := make([]LogEntry, 0)
+	for i := 0; i < len(entries); i++ {
+		out = append(out, LogEntry{
+			Index:   entries[i].Index,
+			Term:    entries[i].Term,
+			Command: entries[i].Command,
+		})
+	}
+	return out
 }
 
 // runElectionTimer runs in a goroutine for the lifetime of a non-leader node.
@@ -68,6 +130,9 @@ func (cm *ConsensusModule) startElection() {
 	cm.currentTerm += 1
 	cm.state = Candidate
 	cm.votedFor = cm.id
+	if err := cm.persist(); err != nil {
+		log.Println("failed to persist state before election:", err)
+	}
 	savedTerm := cm.currentTerm
 	cm.mu.Unlock()
 
@@ -119,6 +184,7 @@ func (cm *ConsensusModule) RequestVote(args RequestVoteArgs) (*RequestVoteReply,
 		reply.VoteGranted = true
 	}
 	reply.Term = cm.currentTerm
+	cm.persist()
 	cm.mu.Unlock()
 	return reply, nil
 }
@@ -168,6 +234,9 @@ func (cm *ConsensusModule) leaderHeartbeat() {
 				cm.mu.Lock()
 				cm.state = Follower
 				cm.currentTerm = reply.Term
+				if err := cm.persist(); err != nil {
+					log.Println("failed to persist state after stepping down:", err)
+				}
 				cm.mu.Unlock()
 				return
 			}
